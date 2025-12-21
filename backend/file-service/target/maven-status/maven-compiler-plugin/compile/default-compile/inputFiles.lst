@@ -1,0 +1,12 @@
+/home/emptydust/JAVAEE_HWF/backend/file-service/src/main/java/com/student/file/controller/FileController.java
+/home/emptydust/JAVAEE_HWF/backend/file-service/src/main/java/com/student/file/strategy/impl/LocalStorageStrategy.java
+/home/emptydust/JAVAEE_HWF/backend/file-service/src/main/java/com/student/file/exception/FileExceptionHandler.java
+/home/emptydust/JAVAEE_HWF/backend/file-service/src/main/java/com/student/file/config/WebMvcConfig.java
+/home/emptydust/JAVAEE_HWF/backend/file-service/src/main/java/com/student/file/service/FileService.java
+/home/emptydust/JAVAEE_HWF/backend/file-service/src/main/java/com/student/file/strategy/FileStorageStrategy.java
+/home/emptydust/JAVAEE_HWF/backend/file-service/src/main/java/com/student/file/mapper/FileInfoMapper.java
+/home/emptydust/JAVAEE_HWF/backend/file-service/src/main/java/com/student/file/FileApplication.java
+/home/emptydust/JAVAEE_HWF/backend/file-service/src/main/java/com/student/file/config/Knife4jConfig.java
+/home/emptydust/JAVAEE_HWF/backend/file-service/src/main/java/com/student/file/entity/FileInfo.java
+/home/emptydust/JAVAEE_HWF/backend/file-service/src/main/java/com/student/file/interceptor/PermissionInterceptor.java
+/home/emptydust/JAVAEE_HWF/backend/file-service/src/main/java/com/student/file/strategy/impl/MinioStorageStrategy.java

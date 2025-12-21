@@ -1,0 +1,10 @@
+com/student/auth/AuthApplication.class
+com/student/auth/config/PasswordSecurityConfig.class
+com/student/auth/config/Knife4jConfig.class
+com/student/auth/service/PasswordSecurityService.class
+com/student/auth/controller/AuthController.class
+com/student/auth/service/AuthService.class
+com/student/auth/util/PasswordValidator.class
+com/student/auth/entity/User.class
+com/student/auth/mapper/UserMapper.class
+com/student/auth/controller/UserController.class

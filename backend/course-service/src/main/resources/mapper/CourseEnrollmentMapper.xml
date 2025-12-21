@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.student.course.mapper.CourseEnrollmentMapper">
+
+    <!-- 查询学生的选课列表(包含课程详细信息) -->
+    <select id="selectMyEnrollmentsWithCourse" resultType="com.student.course.vo.MyEnrollmentVO">
+        SELECT
+            ce.id AS enrollmentId,
+            ce.enrollment_time AS enrollmentTime,
+            ce.score,
+            ce.grade,
+            ci.id AS courseId,
+            ci.course_code AS courseCode,
+            ci.course_name AS courseName,
+            ci.course_type AS courseType,
+            ci.credit,
+            ci.hours,
+            ci.teacher_name AS teacherName,
+            ci.semester,
+            ci.schedule_info AS scheduleInfo,
+            ci.course_description AS courseDescription,
+            ci.course_outline AS courseOutline
+        FROM course_enrollment ce
+        LEFT JOIN course_info ci ON ce.course_id = ci.id
+        WHERE ce.student_id = #{studentId}
+          AND ce.status = 1
+          <if test="courseName != null and courseName != ''">
+              AND (ci.course_name LIKE CONCAT('%', #{courseName}, '%')
+                   OR ci.course_code LIKE CONCAT('%', #{courseName}, '%'))
+          </if>
+          <if test="semester != null and semester != ''">
+              AND ci.semester = #{semester}
+          </if>
+        ORDER BY ce.enrollment_time DESC
+    </select>
+
+</mapper>
