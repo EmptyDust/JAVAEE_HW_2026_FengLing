@@ -41,6 +41,10 @@
             <el-icon><Folder /></el-icon>
             <span>附件管理</span>
           </el-menu-item>
+          <el-menu-item v-if="userStore.userType === 'admin'" index="/home/data-permission">
+            <el-icon><Setting /></el-icon>
+            <span>数据权限管理</span>
+          </el-menu-item>
 
           <!-- 学生可见 -->
           <el-menu-item v-if="userStore.userType === 'student'" index="/home/course-selection">
@@ -86,7 +90,7 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { User, Avatar, Lock, School, Reading, Star, Calendar, Grid, Bell, Document, Folder } from '@element-plus/icons-vue'
+import { User, Avatar, Lock, School, Reading, Star, Calendar, Grid, Bell, Document, Folder, Setting } from '@element-plus/icons-vue'
 import { useUserStore } from '../store/user'
 import { logout } from '../api/auth'
 import NotificationBell from '../components/NotificationBell.vue'

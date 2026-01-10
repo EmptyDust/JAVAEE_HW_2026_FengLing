@@ -49,3 +49,15 @@ password:
     max-failed-attempts: 5        # 最大失败登录次数
     lockout-duration-minutes: 30  # 账户锁定时长（分钟）
     apply-to-admin: false         # 是否对管理员应用密码策略
+
+# Knife4j API文档配置
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn

@@ -87,6 +87,19 @@ public class MinioStorageStrategy implements FileStorageStrategy {
     }
 
     @Override
+    public InputStream downloadRange(String filePath, long start, long end) throws Exception {
+        long length = end - start + 1;
+        return minioClient.getObject(
+                GetObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(filePath)
+                        .offset(start)
+                        .length(length)
+                        .build()
+        );
+    }
+
+    @Override
     public void delete(String filePath) throws Exception {
         minioClient.removeObject(
                 RemoveObjectArgs.builder()

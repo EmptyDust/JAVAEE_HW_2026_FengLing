@@ -2,12 +2,14 @@ com/student/file/strategy/impl/LocalStorageStrategy.class
 com/student/file/interceptor/PermissionInterceptor.class
 com/student/file/controller/FileController.class
 com/student/file/entity/FileInfo.class
+com/student/file/strategy/impl/LocalStorageStrategy$1.class
 com/student/file/service/FileService.class
 com/student/file/controller/FileController$1.class
 com/student/file/config/WebMvcConfig.class
 com/student/file/FileApplication.class
 com/student/file/strategy/FileStorageStrategy.class
 com/student/file/config/Knife4jConfig.class
+com/student/file/config/MybatisPlusConfig.class
 com/student/file/mapper/FileInfoMapper.class
 com/student/file/strategy/impl/MinioStorageStrategy.class
 com/student/file/exception/FileExceptionHandler.class

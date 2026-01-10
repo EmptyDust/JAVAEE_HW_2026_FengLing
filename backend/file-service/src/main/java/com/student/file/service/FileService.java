@@ -46,7 +46,7 @@ public class FileService {
      * 上传文件
      */
     public FileInfo upload(MultipartFile file, String businessType, Long businessId,
-                           Long userId, String username) {
+            Long userId, String username) {
         if (file.isEmpty()) {
             throw new BusinessException("文件不能为空");
         }
@@ -109,6 +109,29 @@ public class FileService {
         } catch (Exception e) {
             log.error("文件下载失败", e);
             throw new BusinessException("文件下载失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 下载文件指定范围（支持Range请求）
+     */
+    public InputStream downloadRange(Long fileId, long start, long end) {
+        FileInfo fileInfo = fileInfoMapper.selectById(fileId);
+        if (fileInfo == null) {
+            throw new BusinessException("文件不存在");
+        }
+
+        try {
+            FileStorageStrategy strategy;
+            if ("minio".equalsIgnoreCase(fileInfo.getStorageType())) {
+                strategy = minioStorageStrategy;
+            } else {
+                strategy = localStorageStrategy;
+            }
+            return strategy.downloadRange(fileInfo.getFilePath(), start, end);
+        } catch (Exception e) {
+            log.error("文件范围下载失败", e);
+            throw new BusinessException("文件范围下载失败: " + e.getMessage());
         }
     }
 

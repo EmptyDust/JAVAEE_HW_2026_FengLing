@@ -14,6 +14,7 @@ import WeeklySchedule from '../views/WeeklySchedule.vue'
 import NotificationList from '../views/NotificationList.vue'
 import NotificationManagement from '../views/NotificationManagement.vue'
 import AttachmentManagement from '../views/AttachmentManagement.vue'
+import DataPermissionManagement from '../views/DataPermissionManagement.vue'
 import Profile from '../views/Profile.vue'
 import ChangePassword from '../views/ChangePassword.vue'
 
@@ -104,6 +105,12 @@ const routes = [
         name: 'AttachmentManagement',
         component: AttachmentManagement,
         meta: { roles: ['admin', 'teacher'] }
+      },
+      {
+        path: 'data-permission',
+        name: 'DataPermissionManagement',
+        component: DataPermissionManagement,
+        meta: { roles: ['admin'] }
       },
       {
         path: 'profile',

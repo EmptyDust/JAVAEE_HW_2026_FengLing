@@ -9,6 +9,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -56,6 +57,53 @@ public class LocalStorageStrategy implements FileStorageStrategy {
             throw new RuntimeException("文件不存在: " + filePath);
         }
         return new FileInputStream(file);
+    }
+
+    @Override
+    public InputStream downloadRange(String filePath, long start, long end) throws Exception {
+        File file = new File(uploadPath + File.separator + filePath);
+        if (!file.exists()) {
+            throw new RuntimeException("文件不存在: " + filePath);
+        }
+
+        RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r");
+        randomAccessFile.seek(start);
+
+        long contentLength = end - start + 1;
+
+        return new InputStream() {
+            private long bytesRead = 0;
+
+            @Override
+            public int read() throws java.io.IOException {
+                if (bytesRead >= contentLength) {
+                    return -1;
+                }
+                bytesRead++;
+                return randomAccessFile.read();
+            }
+
+            @Override
+            public int read(byte[] b, int off, int len) throws java.io.IOException {
+                if (bytesRead >= contentLength) {
+                    return -1;
+                }
+
+                long remaining = contentLength - bytesRead;
+                int toRead = (int) Math.min(len, remaining);
+
+                int actualRead = randomAccessFile.read(b, off, toRead);
+                if (actualRead > 0) {
+                    bytesRead += actualRead;
+                }
+                return actualRead;
+            }
+
+            @Override
+            public void close() throws java.io.IOException {
+                randomAccessFile.close();
+            }
+        };
     }
 
     @Override

@@ -1,5 +1,6 @@
 com/student/student/controller/StudentController.class
 com/student/student/entity/Student.class
+com/student/student/mapper/DataPermissionRuleMapper.class
 com/student/student/mapper/DictMapper.class
 com/student/student/mapper/ClassMapper.class
 com/student/student/config/MybatisPlusConfig.class
@@ -8,11 +9,13 @@ com/student/student/client/FileServiceClient.class
 com/student/student/controller/ClassController.class
 com/student/student/service/ClassService.class
 com/student/student/entity/Dict.class
+com/student/student/service/DataPermissionRuleService.class
 com/student/student/controller/DictController.class
 com/student/student/entity/Class.class
 com/student/student/service/StudentService.class
 com/student/student/vo/StudentVO.class
 com/student/student/mapper/StudentMapper.class
+com/student/student/controller/DataPermissionRuleController.class
 com/student/student/StudentApplication.class
 com/student/student/service/DictService.class
 com/student/student/interceptor/PermissionInterceptor.class

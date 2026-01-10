@@ -25,6 +25,15 @@ public interface FileStorageStrategy {
     InputStream download(String filePath) throws Exception;
 
     /**
+     * 下载文件指定范围（支持Range请求）
+     * @param filePath 文件路径
+     * @param start 起始字节位置
+     * @param end 结束字节位置
+     * @return 文件输入流
+     */
+    InputStream downloadRange(String filePath, long start, long end) throws Exception;
+
+    /**
      * 删除文件
      * @param filePath 文件路径
      */

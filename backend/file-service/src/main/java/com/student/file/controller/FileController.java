@@ -17,7 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -128,7 +127,6 @@ public class FileController {
             }
 
             long fileSize = fileInfo.getFileSize();
-            InputStream inputStream = fileService.download(id);
 
             // 解析Range请求头
             long start = 0;
@@ -153,11 +151,8 @@ public class FileController {
                         .build();
             }
 
-            // 跳过前面的字节
-            if (start > 0) {
-                inputStream.skip(start);
-            }
-
+            // 使用 downloadRange 方法直接获取指定范围的数据（使用 RandomAccessFile，高效）
+            InputStream inputStream = fileService.downloadRange(id, start, end);
             long contentLength = end - start + 1;
 
             // 设置响应头
@@ -182,7 +177,7 @@ public class FileController {
                     .headers(headers)
                     .body(resource);
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("文件流式传输失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

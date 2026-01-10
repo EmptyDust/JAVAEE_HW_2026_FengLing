@@ -7,6 +7,8 @@
 /home/emptydust/JAVAEE_HWF/backend/student-service/src/main/java/com/student/student/service/DictService.java
 /home/emptydust/JAVAEE_HWF/backend/student-service/src/main/java/com/student/student/mapper/StudentMapper.java
 /home/emptydust/JAVAEE_HWF/backend/student-service/src/main/java/com/student/student/entity/Student.java
+/home/emptydust/JAVAEE_HWF/backend/student-service/src/main/java/com/student/student/controller/DataPermissionRuleController.java
+/home/emptydust/JAVAEE_HWF/backend/student-service/src/main/java/com/student/student/mapper/DataPermissionRuleMapper.java
 /home/emptydust/JAVAEE_HWF/backend/student-service/src/main/java/com/student/student/interceptor/PermissionInterceptor.java
 /home/emptydust/JAVAEE_HWF/backend/student-service/src/main/java/com/student/student/client/FileServiceClient.java
 /home/emptydust/JAVAEE_HWF/backend/student-service/src/main/java/com/student/student/entity/Dict.java
@@ -17,3 +19,4 @@
 /home/emptydust/JAVAEE_HWF/backend/student-service/src/main/java/com/student/student/config/WebMvcConfig.java
 /home/emptydust/JAVAEE_HWF/backend/student-service/src/main/java/com/student/student/controller/StudentController.java
 /home/emptydust/JAVAEE_HWF/backend/student-service/src/main/java/com/student/student/StudentApplication.java
+/home/emptydust/JAVAEE_HWF/backend/student-service/src/main/java/com/student/student/service/DataPermissionRuleService.java

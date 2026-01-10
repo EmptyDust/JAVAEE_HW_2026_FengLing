@@ -32,7 +32,7 @@
 - ✅ 学生信息管理（CRUD+数据字典+班级联动+头像上传）
 - ✅ 登录增强（强弱密码校验+密码过期+错误次数控制）
 - ✅ 接口鉴权（基于角色的权限控制）
-- ⏳ 数据权限控制（MyBatis拦截器）- 待实现
+- ✅ 数据权限控制（MyBatis拦截器+动态配置+管理界面）
 
 **技术层面：**
 - ✅ 微服务环境搭建（Nacos + MySQL + Redis）
@@ -122,6 +122,19 @@
 - **文件管理**：上传者和管理员可以删除，所有人可以下载
 - **通知管理**：教师和管理员可以发送，学生只能查看
 - **选课管理**：学生可以选课退课，教师和管理员可以查看学生名单和录入成绩
+
+### 数据权限控制模块
+- **MyBatis拦截器**：自动拦截SQL查询，添加数据权限过滤条件
+- **JSqlParser解析**：智能解析和修改SQL语句，支持复杂查询（JOIN、子查询、UNION）
+- **动态配置系统**：管理员可通过界面动态调整权限规则，无需修改代码
+- **角色级别配置**：为每个角色（admin、teacher、student）配置独立的数据过滤规则
+- **管理员绕过**：管理员用户不受数据权限限制，可查看所有数据
+- **默认权限规则**：
+  - **学生**：只能看到自己的选课记录、发给自己的通知、自己的学生信息
+  - **教师**：只能看到自己教授的课程、自己课程的选课学生、自己上传的文件和附件、自己创建的通知
+  - **管理员**：可以查看所有数据
+- **缓存机制**：权限规则缓存在内存中，支持手动刷新
+- **管理界面**：提供完整的权限规则CRUD操作，支持启用/禁用、搜索筛选
 
 ## 🛠 技术栈
 
@@ -388,6 +401,11 @@ java -jar ./backend/file-service/target/file-service-1.0.0.jar &
 java -jar ./backend/course-service/target/course-service-1.0.0.jar &
 ```
 
+for debug
+```sh
+lsof -ti:8081 | xargs -r kill -9
+```
+
 **验证服务注册：**
 访问 http://localhost:8848/nacos，查看服务列表，确保所有服务都已注册。
 
@@ -465,6 +483,20 @@ npm run dev
 | /student/avatar/upload | POST | 上传学生头像 |
 | /class/list | GET | 获取班级列表 |
 | /dict/list/{dictType} | GET | 获取字典数据 |
+
+**数据权限管理：**
+
+| 接口 | 方法 | 说明 | 权限 |
+|------|------|------|------|
+| /data-permission/list | GET | 分页查询权限规则列表 | admin |
+| /data-permission/{id} | GET | 获取权限规则详情 | admin |
+| /data-permission/add | POST | 添加权限规则 | admin |
+| /data-permission/update | PUT | 更新权限规则 | admin |
+| /data-permission/delete/{id} | DELETE | 删除权限规则 | admin |
+| /data-permission/toggle/{id} | PUT | 启用/禁用权限规则 | admin |
+| /data-permission/refresh-cache | POST | 刷新权限规则缓存 | admin |
+| /data-permission/roles | GET | 获取所有角色列表 | admin |
+| /data-permission/tables | GET | 获取所有表名列表 | admin |
 
 ### 教师服务（course-service - 8084）
 
@@ -600,6 +632,32 @@ Authorization: Bearer {token}
   - @RequireRole({"admin", "teacher"})：管理员和教师可访问
 - **特殊逻辑**：文件删除采用服务层权限控制（上传者OR管理员）
 
+### 数据权限控制（MyBatis拦截器）
+- **核心架构**：
+  - **UserContext**：ThreadLocal存储用户上下文（userId、userType、studentId、teacherId）
+  - **DataPermissionInterceptor**：实现MyBatis-Plus的InnerInterceptor接口，拦截所有SELECT查询
+  - **DataPermissionSqlParser**：使用JSqlParser 4.9解析和修改SQL语句
+  - **DataPermissionRuleRegistry**：内存缓存权限规则，支持动态刷新
+- **工作流程**：
+  1. HTTP请求到达时，PermissionInterceptor从请求头提取用户信息并设置到UserContext
+  2. MyBatis执行查询时，DataPermissionInterceptor拦截SQL
+  3. 检查用户角色：管理员直接放行，其他角色继续处理
+  4. DataPermissionSqlParser使用JSqlParser解析SQL，识别表名
+  5. 从DataPermissionRuleRegistry获取该角色对该表的过滤规则
+  6. 自动添加WHERE条件（如：`WHERE student_id = 当前studentId`）
+  7. 支持复杂SQL：JOIN查询、子查询、UNION操作
+  8. 请求结束时，清理ThreadLocal防止内存泄漏
+- **权限规则配置**：
+  - 存储在`data_permission_rule`表中
+  - 支持简单条件（=、IN、>、<等）和子查询
+  - 管理员可通过前端界面动态增删改查规则
+  - 规则修改后需手动刷新缓存生效
+- **技术特点**：
+  - 零侵入：业务代码无需修改，自动生效
+  - 高性能：规则缓存在内存，SQL解析失败时故障安全
+  - 灵活配置：支持动态调整，无需重启服务
+  - 智能解析：支持表别名、JOIN、子查询等复杂场景
+
 ### 跨域处理
 - 网关统一配置CORS，允许所有来源
 
@@ -728,7 +786,7 @@ GlobalExceptionHandler提供全局异常拦截：
 ### 功能扩展
 - [x] 登录增强（强弱密码校验+密码过期+错误次数控制）
 - [x] 接口鉴权（基于角色的权限控制）
-- [ ] 数据权限控制（MyBatis拦截器）
+- [x] 数据权限控制（MyBatis拦截器+动态配置+管理界面）
 - [x] 教师管理模块（完整CRUD+头像上传+自动创建账号）
 - [x] 通知模板功能
 - [x] 定时发送通知
@@ -756,6 +814,6 @@ MIT License
 
 ---
 
-**项目完成度：中等难度 100% | 困难档 50%**
+**项目完成度：中等难度 100% | 困难档 100%**
 
 **最后更新：2025-12-21**
