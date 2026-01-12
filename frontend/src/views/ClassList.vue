@@ -32,8 +32,8 @@
         <el-table-column prop="id" label="ID" width="80"></el-table-column>
         <el-table-column prop="classNo" label="班级编号" width="120"></el-table-column>
         <el-table-column prop="className" label="班级名称"></el-table-column>
-        <el-table-column prop="gradeId" label="年级ID" width="100"></el-table-column>
-        <el-table-column prop="teacherId" label="班主任ID" width="120"></el-table-column>
+        <!-- <el-table-column prop="gradeId" label="年级ID" width="100"></el-table-column> -->
+        <!-- <el-table-column prop="teacherId" label="班主任ID" width="120"></el-table-column> -->
         <el-table-column prop="createTime" label="创建时间" width="180"></el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="scope">
@@ -70,12 +70,12 @@
         <el-form-item label="班级名称" prop="className">
           <el-input v-model="form.className" placeholder="请输入班级名称"></el-input>
         </el-form-item>
-        <el-form-item label="年级ID" prop="gradeId">
+        <!-- <el-form-item label="年级ID" prop="gradeId">
           <el-input-number v-model="form.gradeId" :min="1" placeholder="请输入年级ID"></el-input-number>
         </el-form-item>
         <el-form-item label="班主任ID" prop="teacherId">
           <el-input-number v-model="form.teacherId" :min="1" placeholder="请输入班主任ID"></el-input-number>
-        </el-form-item>
+        </el-form-item> -->
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>

@@ -32,11 +32,12 @@ spring:
         - id: course-service
           uri: lb://course-service
           predicates:
-            - Path=/course/**,/notification/**,/teacher/**
+            - Path=/course/**,/notification/**
+        - id: teacher-service
+          uri: lb://teacher-service
+          predicates:
+            - Path=/teacher/**
   data:
     redis:
-      host: localhost
-      port: 6379
-      password: redis123456
-      database: 0
+      url: redis://default:redis123456@localhost:6379/0
       timeout: 3000ms

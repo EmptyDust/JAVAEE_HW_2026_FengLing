@@ -6,6 +6,7 @@ import com.student.student.mapper.ClassMapper;
 import org.springframework.stereotype.Service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import java.util.List;
 
 @Service
 public class ClassService {
@@ -16,6 +17,10 @@ public class ClassService {
     public Page<Class> list(int page, int size) {
         Page<Class> pageParam = new Page<>(page, size);
         return classMapper.selectPage(pageParam, null);
+    }
+
+    public List<Class> listAll() {
+        return classMapper.selectList(null);
     }
 
     public void add(Class classEntity) {

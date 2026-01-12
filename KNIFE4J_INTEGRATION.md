@@ -2,7 +2,7 @@
 
 ## 概述
 
-已成功为学生信息管理系统集成 Knife4j (Swagger) API 文档功能，提供可视化的 API 接口文档和在线测试工具。
+已成功为教务管理系统集成 Knife4j (Swagger) API 文档功能，提供可视化的 API 接口文档和在线测试工具。
 
 ## 集成版本
 
@@ -60,14 +60,14 @@ public class Knife4jConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("认证服务 API")
-                        .description("学生信息管理系统 - 认证服务接口文档")
+                        .description("教务管理系统 - 认证服务接口文档")
                         .version("v1.0.0")
                         .contact(new Contact()
-                                .name("开发团队")
-                                .email("dev@student.com"))
+                                .name("风铃")
+                                .email("fenglingyexing@gmail.com"))
                         .license(new License()
-                                .name("Apache 2.0")
-                                .url("https://www.apache.org/licenses/LICENSE-2.0.html")));
+                                .name("MIT")
+                                .url("https://opensource.org/license/mit")));
     }
 }
 ```
@@ -81,7 +81,7 @@ public class Knife4jConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("学生服务 API")
-                        .description("学生信息管理系统 - 学生服务接口文档")
+                        .description("教务管理系统 - 学生服务接口文档")
                         .version("v1.0.0")
                         // ...
                 });

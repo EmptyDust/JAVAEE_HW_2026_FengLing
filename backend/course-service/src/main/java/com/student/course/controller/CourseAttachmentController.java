@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -33,17 +32,21 @@ public class CourseAttachmentController {
         return Result.success(attachments);
     }
 
-    @Operation(summary = "上传课程附件")
-    @PostMapping("/upload")
-    public Result<CourseAttachment> uploadAttachment(
-            @Parameter(description = "文件") @RequestParam("file") MultipartFile file,
+    @Operation(summary = "创建课程附件记录", description = "前端需先调用file-service上传文件获取文件信息")
+    @PostMapping("/create")
+    public Result<CourseAttachment> createAttachment(
             @Parameter(description = "课程ID") @RequestParam("courseId") Long courseId,
+            @Parameter(description = "文件ID") @RequestParam("fileId") Long fileId,
+            @Parameter(description = "文件名") @RequestParam("fileName") String fileName,
+            @Parameter(description = "文件路径") @RequestParam("filePath") String filePath,
+            @Parameter(description = "文件大小") @RequestParam("fileSize") Long fileSize,
+            @Parameter(description = "MIME类型") @RequestParam("mimeType") String mimeType,
             @Parameter(description = "附件描述") @RequestParam(required = false) String description,
             @Parameter(hidden = true) @RequestHeader(value = "userId", required = false) Long userId,
             @Parameter(hidden = true) @RequestHeader(value = "username", required = false) String username) {
 
-        CourseAttachment attachment = attachmentService.uploadAttachment(file, courseId, description,
-                userId, username);
+        CourseAttachment attachment = attachmentService.createAttachment(courseId, fileId, fileName,
+                filePath, fileSize, mimeType, description, userId, username);
         return Result.success(attachment);
     }
 

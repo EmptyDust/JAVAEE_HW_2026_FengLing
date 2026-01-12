@@ -2,8 +2,6 @@ package com.student.course.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.student.common.exception.BusinessException;
-import com.student.common.result.Result;
-import com.student.course.client.FileServiceClient;
 import com.student.course.document.CourseAttachmentDocument;
 import com.student.course.entity.CourseAttachment;
 import com.student.course.entity.CourseInfo;
@@ -36,9 +34,6 @@ public class CourseAttachmentService {
     private CourseAttachmentMapper attachmentMapper;
 
     @Autowired
-    private FileServiceClient fileServiceClient;
-
-    @Autowired
     private DocumentContentExtractor contentExtractor;
 
     @Autowired
@@ -60,71 +55,44 @@ public class CourseAttachmentService {
     }
 
     /**
-     * 上传课程附件
+     * 创建课程附件记录
+     * 前端需先调用file-service上传文件获取文件信息，再调用此方法创建附件记录
      */
     @Transactional(rollbackFor = Exception.class)
-    public CourseAttachment uploadAttachment(MultipartFile file, Long courseId, String description,
-                                              Long userId, String username) {
-        if (file.isEmpty()) {
-            throw new BusinessException("文件不能为空");
+    public CourseAttachment createAttachment(Long courseId, Long fileId, String fileName,
+                                             String filePath, Long fileSize, String mimeType,
+                                             String description, Long userId, String username) {
+        // 解析文件类型
+        String extension = "";
+        if (fileName != null && fileName.contains(".")) {
+            extension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
         }
 
-        try {
-            // 调用文件服务上传文件
-            Result<Map<String, Object>> uploadResult = fileServiceClient.upload(
-                    file,
-                    "course-attachment",
-                    courseId,
-                    userId,
-                    username
-            );
+        String attachmentType = getAttachmentType(extension);
 
-            if (uploadResult == null || uploadResult.getCode() != 200) {
-                throw new BusinessException("文件上传失败");
-            }
+        // 创建附件记录
+        CourseAttachment attachment = new CourseAttachment();
+        attachment.setCourseId(courseId);
+        attachment.setFileId(fileId);
+        attachment.setAttachmentType(attachmentType);
+        attachment.setAttachmentName(fileName);
+        attachment.setFilePath(filePath);
+        attachment.setFileSize(fileSize);
+        attachment.setFileExtension(extension);
+        attachment.setMimeType(mimeType);
+        attachment.setDescription(description);
+        attachment.setDownloadCount(0);
+        attachment.setViewCount(0);
+        attachment.setEsIndexed(0);
+        attachment.setSortOrder(0);
+        attachment.setStatus(1);
+        attachment.setUploadUserId(userId);
+        attachment.setUploadUserName(username);
 
-            Map<String, Object> fileInfo = uploadResult.getData();
+        attachmentMapper.insert(attachment);
 
-            // 解析文件类型
-            String fileName = file.getOriginalFilename();
-            String extension = "";
-            if (fileName != null && fileName.contains(".")) {
-                extension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
-            }
-
-            String attachmentType = getAttachmentType(extension);
-
-            // 创建附件记录
-            CourseAttachment attachment = new CourseAttachment();
-            attachment.setCourseId(courseId);
-            attachment.setFileId(Long.valueOf(fileInfo.get("id").toString()));
-            attachment.setAttachmentType(attachmentType);
-            attachment.setAttachmentName(fileName);
-            attachment.setFilePath(fileInfo.get("filePath").toString());
-            attachment.setFileSize(file.getSize());
-            attachment.setFileExtension(extension);
-            attachment.setMimeType(file.getContentType());
-            attachment.setDescription(description);
-            attachment.setDownloadCount(0);
-            attachment.setViewCount(0);
-            attachment.setEsIndexed(0);
-            attachment.setSortOrder(0);
-            attachment.setStatus(1);
-            attachment.setUploadUserId(userId);
-            attachment.setUploadUserName(username);
-
-            attachmentMapper.insert(attachment);
-
-            // 异步建立Elasticsearch索引
-            indexAttachmentAsync(attachment, file);
-
-            log.info("课程附件上传成功: courseId={}, fileName={}", courseId, fileName);
-            return attachment;
-
-        } catch (Exception e) {
-            log.error("课程附件上传失败", e);
-            throw new BusinessException("课程附件上传失败: " + e.getMessage());
-        }
+        log.info("课程附件记录创建成功: courseId={}, fileName={}", courseId, fileName);
+        return attachment;
     }
 
     /**
@@ -171,13 +139,6 @@ public class CourseAttachmentService {
         // 标记为删除状态
         attachment.setStatus(0);
         attachmentMapper.updateById(attachment);
-
-        // 调用文件服务删除文件
-        try {
-            fileServiceClient.deleteFile(attachment.getFileId());
-        } catch (Exception e) {
-            log.error("删除文件失败: fileId={}", attachment.getFileId(), e);
-        }
 
         // 删除Elasticsearch索引
         try {

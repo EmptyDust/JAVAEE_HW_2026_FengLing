@@ -1,7 +1,7 @@
 <template>
   <div class="login-container">
     <el-card class="login-card">
-      <h2>学生信息管理系统</h2>
+      <h2>教务管理系统</h2>
       <el-form :model="form" :rules="rules" ref="formRef" label-width="80px">
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" placeholder="请输入用户名"></el-input>
@@ -78,7 +78,8 @@ const handleLogin = async () => {
         userId: res.data.userId,
         username: res.data.username,
         userType: res.data.userType,
-        studentId: res.data.studentId
+        studentId: res.data.studentId,
+        teacherId: res.data.teacherId 
       })
 
       // 检查密码是否过期
@@ -87,7 +88,7 @@ const handleLogin = async () => {
           message: res.data.message || '您的密码已过期，请立即修改密码',
           duration: 5000
         })
-        // 可以在这里跳转到密码修改页面
+        // TODO: 可以在这里跳转到密码修改页面
         // router.push('/change-password?forced=true')
         // 暂时先跳转到正常页面，用户可以在个人中心修改密码
       } else {

@@ -155,6 +155,7 @@
         <!-- 视频播放器 -->
         <video
           v-if="previewType === 'video'"
+          ref="videoPlayer"
           :src="previewUrl"
           controls
           style="width: 100%; max-height: 500px"
@@ -163,6 +164,7 @@
         <!-- 音频播放器 -->
         <audio
           v-if="previewType === 'audio'"
+          ref="audioPlayer"
           :src="previewUrl"
           controls
           style="width: 100%"
@@ -200,7 +202,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import {
@@ -244,6 +246,8 @@ const previewUrl = ref('')
 const previewTitle = ref('')
 const isOfficeDocument = ref(false)
 const officeViewerUrl = ref('')
+const videoPlayer = ref(null)
+const audioPlayer = ref(null)
 
 // 学期选项列表
 const semesterOptions = ref([])
@@ -440,6 +444,21 @@ const formatFileSize = (bytes) => {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
 }
+
+// 监听预览对话框关闭，停止媒体播放
+watch(previewDialogVisible, (newValue) => {
+  if (!newValue) {
+    // 对话框关闭时，停止视频和音频播放
+    if (videoPlayer.value) {
+      videoPlayer.value.pause()
+      videoPlayer.value.currentTime = 0
+    }
+    if (audioPlayer.value) {
+      audioPlayer.value.pause()
+      audioPlayer.value.currentTime = 0
+    }
+  }
+})
 
 onMounted(async () => {
   // 加载学期选项

@@ -7,6 +7,7 @@ export const useUserStore = defineStore('user', () => {
   const username = ref(localStorage.getItem('username') || '')
   const userType = ref(localStorage.getItem('userType') || '')
   const studentId = ref(localStorage.getItem('studentId') || '')
+  const teacherId = ref(localStorage.getItem('teacherId') || '')  // 新增
 
   function setToken(newToken) {
     token.value = newToken
@@ -18,6 +19,7 @@ export const useUserStore = defineStore('user', () => {
     username.value = info.username
     userType.value = info.userType || ''
     studentId.value = info.studentId || ''
+    teacherId.value = info.teacherId || ''  // 新增
 
     localStorage.setItem('userId', info.userId)
     localStorage.setItem('username', info.username)
@@ -27,6 +29,9 @@ export const useUserStore = defineStore('user', () => {
     if (info.studentId) {
       localStorage.setItem('studentId', info.studentId)
     }
+    if (info.teacherId) {
+      localStorage.setItem('teacherId', info.teacherId)  // 新增
+    }
   }
 
   function logout() {
@@ -35,12 +40,14 @@ export const useUserStore = defineStore('user', () => {
     username.value = ''
     userType.value = ''
     studentId.value = ''
+    teacherId.value = ''  // 新增
 
     localStorage.removeItem('token')
     localStorage.removeItem('userId')
     localStorage.removeItem('username')
     localStorage.removeItem('userType')
     localStorage.removeItem('studentId')
+    localStorage.removeItem('teacherId')  // 新增
   }
 
   return {
@@ -49,6 +56,7 @@ export const useUserStore = defineStore('user', () => {
     username,
     userType,
     studentId,
+    teacherId,  // 新增
     setToken,
     setUserInfo,
     logout

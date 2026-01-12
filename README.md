@@ -1,6 +1,6 @@
-# 学生信息管理系统
+# 教务管理系统
 
-基于Spring Boot + Nacos微服务架构的学生信息管理系统，实现用户认证、学生管理、课程管理、选课系统、实时通知等完整功能。
+基于Spring Boot + Nacos微服务架构的教务管理系统，实现用户认证、学生管理、课程管理、选课系统、实时通知等完整功能。
 
 ## 📋 需求文档说明
 
@@ -386,19 +386,28 @@ cd JAVAEE_HWF
 mvn clean package -DskipTests
 
 # 2. 启动网关（必须第一个启动）
-java -jar ./backend/gateway/target/gateway-1.0.0.jar &
+java -jar ./backend/gateway/target/gateway-1.0.0.jar 
 
 # 3. 启动认证服务
-java -jar ./backend/auth-service/target/auth-service-1.0.0.jar &
+java -jar ./backend/auth-service/target/auth-service-1.0.0.jar 
 
 # 4. 启动学生服务
-java -jar ./backend/student-service/target/student-service-1.0.0.jar &
+java -jar ./backend/student-service/target/student-service-1.0.0.jar 
+
+java -jar ./backend/teacher-service/target/teacher-service-1.0.0.jar 
 
 # 5. 启动文件服务
-java -jar ./backend/file-service/target/file-service-1.0.0.jar &
+java -jar ./backend/file-service/target/file-service-1.0.0.jar 
 
 # 6. 启动课程服务
-java -jar ./backend/course-service/target/course-service-1.0.0.jar &
+java -jar ./backend/course-service/target/course-service-1.0.0.jar 
+
+```
+
+
+```sh
+cd /home/emptydust/JAVAEE_HWF/backend/teacher-service
+mvn spring-boot:run
 ```
 
 for debug

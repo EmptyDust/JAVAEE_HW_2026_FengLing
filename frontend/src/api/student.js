@@ -29,19 +29,27 @@ export const getMyProfile = () => {
   return request.get('/student/me')
 }
 
+// 更新学生自己的信息（学生自助）
+export const updateMyProfile = (data) => {
+  return request.put('/student/me', data)
+}
+
 // 获取学生详情
 export const getStudentById = (id) => {
   return request.get(`/student/${id}`)
 }
 
-// 上传学生头像
-export const uploadAvatar = (file, studentId) => {
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('studentId', studentId)
-  return request.post('/student/upload-avatar', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  })
+// 上传学生头像（两步流程：先上传文件到file-service，再更新头像记录）
+export const uploadAvatar = async (file, studentId) => {
+  // 第一步：上传文件到file-service
+  const { uploadFile } = await import('./file')
+  const uploadResult = await uploadFile(file, 'avatar', studentId)
+
+  // 第二步：更新学生头像记录
+  const params = {
+    studentId,
+    fileId: uploadResult.data.id,
+    fileUrl: uploadResult.data.accessUrl
+  }
+  return request.post('/student/update-avatar', null, { params })
 }

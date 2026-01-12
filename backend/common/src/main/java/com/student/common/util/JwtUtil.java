@@ -20,10 +20,14 @@ public class JwtUtil {
     }
 
     public static String generateToken(Long userId, String username) {
-        return generateToken(userId, username, null, null);
+        return generateToken(userId, username, null, null, null);
     }
 
     public static String generateToken(Long userId, String username, String userType, Long studentId) {
+        return generateToken(userId, username, userType, studentId, null);
+    }
+
+    public static String generateToken(Long userId, String username, String userType, Long studentId, Long teacherId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);
@@ -32,6 +36,9 @@ public class JwtUtil {
         }
         if (studentId != null) {
             claims.put("studentId", studentId);
+        }
+        if (teacherId != null) {
+            claims.put("teacherId", teacherId);
         }
 
         return Jwts.builder()
@@ -76,6 +83,18 @@ public class JwtUtil {
             return ((Integer) studentId).longValue();
         }
         return (Long) studentId;
+    }
+
+    public static Long getTeacherId(String token) {
+        Claims claims = parseToken(token);
+        Object teacherId = claims.get("teacherId");
+        if (teacherId == null) {
+            return null;
+        }
+        if (teacherId instanceof Integer) {
+            return ((Integer) teacherId).longValue();
+        }
+        return (Long) teacherId;
     }
 
     public static boolean isTokenExpired(String token) {

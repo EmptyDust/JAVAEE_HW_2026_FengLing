@@ -18,6 +18,7 @@ public class CourseListVO {
     private String courseType;
     private BigDecimal credit;
     private Integer hours;
+    private Long teacherId;
     private String teacherName;
     private String semester;
     private Integer maxStudents;

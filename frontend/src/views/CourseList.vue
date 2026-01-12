@@ -100,7 +100,12 @@
           <el-input-number v-model="form.hours" :min="0" :max="200" style="width: 100%"></el-input-number>
         </el-form-item>
         <el-form-item label="授课教师" prop="teacherId">
-          <el-select v-model="form.teacherId" placeholder="选择授课教师" style="width: 100%" @change="handleTeacherChange">
+          <el-select
+            v-model="form.teacherId"
+            placeholder="选择授课教师"
+            style="width: 100%"
+            :disabled="isTeacherFieldDisabled"
+            @change="handleTeacherChange">
             <el-option
               v-for="teacher in teacherList"
               :key="teacher.id"
@@ -135,11 +140,7 @@
     <el-dialog v-model="attachmentDialogVisible" title="课程附件管理" width="900px">
       <div style="margin-bottom: 20px">
         <el-upload
-          :action="uploadUrl"
-          :headers="uploadHeaders"
-          :data="{ courseId: currentCourse.id }"
-          :on-success="handleUploadSuccess"
-          :on-error="handleUploadError"
+          :http-request="handleCustomUpload"
           :show-file-list="false"
         >
           <el-button type="primary">上传附件</el-button>
@@ -351,6 +352,7 @@
         <!-- 视频播放器 -->
         <video
           v-if="previewType === 'video'"
+          ref="videoPlayer"
           :src="previewUrl"
           controls
           style="width: 100%; max-height: 500px"
@@ -359,6 +361,7 @@
         <!-- 音频播放器 -->
         <audio
           v-if="previewType === 'audio'"
+          ref="audioPlayer"
           :src="previewUrl"
           controls
           style="width: 100%"
@@ -471,7 +474,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useUserStore } from '../store/user'
@@ -490,12 +493,18 @@ import {
   updateCalendarEvent,
   deleteCalendarEvent,
   updateScore,
-  advancedSearchAttachments
+  advancedSearchAttachments,
+  uploadAttachment
 } from '../api/course'
 import { createNotification, getTemplatesByType, applyTemplate } from '../api/notification'
 import { getAllTeachers } from '../api/teacher'
 
 const userStore = useUserStore()
+
+// 计算属性：判断是否应该禁用教师字段（教师编辑时不允许修改授课教师）
+const isTeacherFieldDisabled = computed(() => {
+  return userStore.userType === 'teacher' && form.id !== null
+})
 
 // 搜索表单
 const searchForm = reactive({
@@ -550,10 +559,6 @@ const attachmentDialogVisible = ref(false)
 const currentCourse = ref({})
 const attachments = ref([])
 const attachmentSearchKeyword = ref('')
-const uploadUrl = '/api/course/attachment/upload'
-const uploadHeaders = computed(() => ({
-  'Authorization': `Bearer ${userStore.token}`
-}))
 
 // 学生列表
 const studentsDialogVisible = ref(false)
@@ -618,6 +623,8 @@ const previewUrl = ref('')
 const previewTitle = ref('')
 const isOfficeDocument = ref(false)
 const officeViewerUrl = ref('')
+const videoPlayer = ref(null)
+const audioPlayer = ref(null)
 
 // 通知发送
 const notificationDialogVisible = ref(false)
@@ -678,9 +685,26 @@ const handleAdd = () => {
 }
 
 // 编辑课程
-const handleEdit = (row) => {
+const handleEdit = async (row) => {
   dialogTitle.value = '编辑课程'
+
+  // 确保教师列表已加载
+  if (teacherList.value.length === 0) {
+    await fetchTeachers()
+  }
+
+  // 复制课程数据到表单
   Object.assign(form, row)
+
+  // 确保 teacherId 是数字类型（防止类型不匹配）
+  if (form.teacherId) {
+    form.teacherId = Number(form.teacherId)
+  }
+
+  // 调试信息
+  console.log('编辑课程 - teacherId:', form.teacherId, 'type:', typeof form.teacherId)
+  console.log('教师列表:', teacherList.value.map(t => ({ id: t.id, type: typeof t.id, name: t.teacherName })))
+
   dialogVisible.value = true
 }
 
@@ -775,6 +799,17 @@ const handleUploadSuccess = (response) => {
 // 上传失败
 const handleUploadError = () => {
   ElMessage.error('上传失败')
+}
+
+// 自定义上传
+const handleCustomUpload = async (options) => {
+  try {
+    await uploadAttachment(options.file, currentCourse.value.id)
+    ElMessage.success('上传成功')
+    fetchAttachments()
+  } catch (error) {
+    ElMessage.error('上传失败')
+  }
 }
 
 // 下载附件
@@ -1216,6 +1251,21 @@ const handleTeacherChange = (teacherId) => {
     form.teacherName = teacher.teacherName
   }
 }
+
+// 监听预览对话框关闭，停止媒体播放
+watch(previewDialogVisible, (newValue) => {
+  if (!newValue) {
+    // 对话框关闭时，停止视频和音频播放
+    if (videoPlayer.value) {
+      videoPlayer.value.pause()
+      videoPlayer.value.currentTime = 0
+    }
+    if (audioPlayer.value) {
+      audioPlayer.value.pause()
+      audioPlayer.value.currentTime = 0
+    }
+  }
+})
 
 onMounted(() => {
   fetchData()

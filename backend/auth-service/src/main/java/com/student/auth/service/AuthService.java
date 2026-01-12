@@ -135,8 +135,14 @@ public class AuthService {
         // 6. 检查密码是否过期
         boolean passwordExpired = passwordSecurityService.isPasswordExpired(user);
 
-        // 7. 生成token
-        String token = JwtUtil.generateToken(user.getId(), user.getUsername(), user.getUserType(), user.getStudentId());
+        // 7. 生成token（包含 studentId 和 teacherId）
+        String token = JwtUtil.generateToken(
+            user.getId(),
+            user.getUsername(),
+            user.getUserType(),
+            user.getStudentId(),
+            user.getTeacherId()  // 新增：包含 teacherId
+        );
         redisUtil.set("token:" + user.getId(), token, 24, TimeUnit.HOURS);
 
         // 8. 返回结果
@@ -146,6 +152,7 @@ public class AuthService {
         result.put("username", user.getUsername());
         result.put("userType", user.getUserType());
         result.put("studentId", user.getStudentId());
+        result.put("teacherId", user.getTeacherId());  // 新增：返回 teacherId
         result.put("passwordExpired", passwordExpired); // 前端根据此字段决定是否强制修改密码
 
         if (passwordExpired) {

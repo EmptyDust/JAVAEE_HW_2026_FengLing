@@ -31,6 +31,9 @@ public class CourseCalendarController {
     @Autowired
     private SemesterService semesterService;
 
+    @Autowired
+    private com.student.course.service.CourseInfoService courseInfoService;
+
     @Operation(summary = "获取可用学期列表")
     @GetMapping("/semesters")
     public Result<List<SemesterVO>> getAvailableSemesters() {
@@ -53,8 +56,14 @@ public class CourseCalendarController {
             return Result.error("学期不存在");
         }
 
+        // 关键修改：先按学期过滤课程ID
+        List<Long> filteredCourseIds = courseInfoService.filterCourseIdsBySemester(courseIds, semesterInfo.getSemester());
+
+        log.info("学期: {}, 原始课程数: {}, 过滤后课程数: {}",
+                semesterInfo.getSemester(), courseIds.size(), filteredCourseIds.size());
+
         List<CourseCalendar> calendar = calendarService.getStudentCalendar(
-                courseIds, semesterInfo.getStartDate(), semesterInfo.getEndDate());
+                filteredCourseIds, semesterInfo.getStartDate(), semesterInfo.getEndDate());
         return Result.success(calendar);
     }
 

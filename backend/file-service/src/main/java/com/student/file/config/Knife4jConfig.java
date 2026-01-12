@@ -13,18 +13,18 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class Knife4jConfig {
 
-    @Bean
-    public OpenAPI openAPI() {
-        return new OpenAPI()
-                .info(new Info()
-                        .title("文件服务 API")
-                        .description("学生信息管理系统 - 文件服务接口文档")
-                        .version("v1.0.0")
-                        .contact(new Contact()
-                                .name("开发团队")
-                                .email("dev@student.com"))
-                        .license(new License()
-                                .name("Apache 2.0")
-                                .url("https://www.apache.org/licenses/LICENSE-2.0.html")));
-    }
+        @Bean
+        public OpenAPI openAPI() {
+                return new OpenAPI()
+                                .info(new Info()
+                                                .title("文件服务 API")
+                                                .description("教务管理系统 - 文件服务接口文档")
+                                                .version("v1.0.0")
+                                                .contact(new Contact()
+                                                                .name("风铃")
+                                                                .email("fenglingyexing@gmail.com"))
+                                                .license(new License()
+                                                                .name("MIT")
+                                                                .url("https://opensource.org/license/mit")));
+        }
 }

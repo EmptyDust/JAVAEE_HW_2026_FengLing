@@ -18,7 +18,9 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/auth/register",
             "/auth/captcha",
             "/file/download",
-            "/file/stream"
+            "/file/stream",
+            "/class/all",
+            "/student/add"
     };
 
     @Override
@@ -52,6 +54,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
             String username = JwtUtil.getUsername(token);
             String userType = JwtUtil.getUserType(token);
             Long studentId = JwtUtil.getStudentId(token);
+            Long teacherId = JwtUtil.getTeacherId(token); 
 
             ServerHttpRequest.Builder builder = exchange.getRequest().mutate()
                     .header("userId", String.valueOf(userId))
@@ -62,6 +65,9 @@ public class AuthFilter implements GlobalFilter, Ordered {
             }
             if (studentId != null) {
                 builder.header("studentId", String.valueOf(studentId));
+            }
+            if (teacherId != null) {
+                builder.header("teacherId", String.valueOf(teacherId));  // 新增：注入 teacherId
             }
 
             ServerHttpRequest request = builder.build();

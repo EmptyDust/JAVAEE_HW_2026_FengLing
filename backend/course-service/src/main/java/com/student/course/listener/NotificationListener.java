@@ -1,6 +1,8 @@
 package com.student.course.listener;
 
+import com.student.common.result.Result;
 import com.student.course.entity.CourseNotification;
+import com.student.course.feign.StudentFeignClient;
 import com.student.course.mapper.CourseNotificationMapper;
 import com.student.course.service.NotificationService;
 import com.student.course.websocket.NotificationWebSocketHandler;
@@ -28,6 +30,9 @@ public class NotificationListener {
 
     @Autowired
     private NotificationWebSocketHandler webSocketHandler;
+
+    @Autowired
+    private StudentFeignClient studentFeignClient;
 
     /**
      * 监听通知队列
@@ -103,9 +108,20 @@ public class NotificationListener {
             // 获取已选课学生
             return notificationService.getCourseStudentIds(courseId);
         } else if ("all".equals(targetType)) {
-            // 获取所有学生（需要调用学生服务）
-            // 这里暂时返回已选课学生
-            return notificationService.getCourseStudentIds(courseId);
+            // 获取所有学生（调用学生服务）
+            try {
+                Result<List<Long>> result = studentFeignClient.getAllStudentUserIds();
+                if (result != null && result.getCode() == 200 && result.getData() != null) {
+                    log.info("通过Feign获取到所有学生用户ID，数量: {}", result.getData().size());
+                    return result.getData();
+                } else {
+                    log.error("调用学生服务获取用户ID失败: {}", result != null ? result.getMessage() : "result is null");
+                    return List.of();
+                }
+            } catch (Exception e) {
+                log.error("调用学生服务异常", e);
+                return List.of();
+            }
         }
         return List.of();
     }

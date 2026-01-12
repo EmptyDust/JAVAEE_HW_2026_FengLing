@@ -3,6 +3,8 @@ package com.student.course.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.student.common.context.UserContext;
+import com.student.common.context.UserContextHolder;
 import com.student.common.exception.BusinessException;
 import com.student.course.entity.CourseEnrollment;
 import com.student.course.entity.CourseInfo;
@@ -70,12 +72,8 @@ public class CourseInfoService {
                     .map(CourseInfo::getId)
                     .collect(Collectors.toList());
 
-            LambdaQueryWrapper<CourseEnrollment> enrollWrapper = new LambdaQueryWrapper<>();
-            enrollWrapper.eq(CourseEnrollment::getStudentId, studentId)
-                    .in(CourseEnrollment::getCourseId, courseIds)
-                    .eq(CourseEnrollment::getStatus, 1);
-
-            List<CourseEnrollment> enrollments = enrollmentMapper.selectList(enrollWrapper);
+            // 使用自定义方法查询选课记录，避免数据权限拦截器冲突
+            List<CourseEnrollment> enrollments = enrollmentMapper.selectByStudentAndCourses(studentId, courseIds);
             enrolledCourseIds = enrollments.stream()
                     .map(CourseEnrollment::getCourseId)
                     .collect(Collectors.toSet());
@@ -187,6 +185,21 @@ public class CourseInfoService {
             }
         }
 
+        // 教师不允许修改授课教师字段
+        UserContext context = UserContextHolder.getContext();
+        if (context != null && context.isTeacher()) {
+            // 检查是否修改了 teacher_id
+            if (courseInfo.getTeacherId() != null &&
+                !courseInfo.getTeacherId().equals(existCourse.getTeacherId())) {
+                throw new BusinessException("教师不允许修改授课教师");
+            }
+            // 检查是否修改了 teacher_name
+            if (courseInfo.getTeacherName() != null &&
+                !courseInfo.getTeacherName().equals(existCourse.getTeacherName())) {
+                throw new BusinessException("教师不允许修改授课教师姓名");
+            }
+        }
+
         courseInfoMapper.updateById(courseInfo);
         log.info("更新课程成功: {} - {}", courseInfo.getCourseCode(), courseInfo.getCourseName());
         return courseInfo;
@@ -212,45 +225,82 @@ public class CourseInfoService {
     }
 
     /**
-     * 增加选课人数
+     * 增加选课人数（原子操作，防止超卖）
+     *
+     * 使用数据库层面的原子更新，避免并发问题：
+     * 1. 使用 enrolled_students = enrolled_students + 1 确保原子性
+     * 2. 使用 WHERE enrolled_students < max_students 防止超卖
+     * 3. 使用 WHERE status = 1 确保课程处于可选状态
      */
     @Transactional(rollbackFor = Exception.class)
     public void incrementEnrollment(Long courseId) {
-        CourseInfo course = getCourseById(courseId);
-        int enrolled = course.getEnrolledStudents() == null ? 0 : course.getEnrolledStudents();
-        int max = course.getMaxStudents() == null ? Integer.MAX_VALUE : course.getMaxStudents();
+        // 使用原子更新SQL，返回影响的行数
+        int affectedRows = courseInfoMapper.incrementEnrollmentAtomic(courseId);
 
-        if (enrolled >= max) {
-            throw new BusinessException("课程选课人数已满");
+        if (affectedRows == 0) {
+            // 更新失败，可能是课程已满或课程状态不可选
+            CourseInfo course = getCourseById(courseId);
+
+            if (course.getStatus() == 0) {
+                throw new BusinessException("该课程已停用，不能选课");
+            } else if (course.getStatus() == 2) {
+                throw new BusinessException("该课程选课人数已满");
+            } else {
+                // 其他情况：可能是并发导致的已满
+                int enrolled = course.getEnrolledStudents() == null ? 0 : course.getEnrolledStudents();
+                int max = course.getMaxStudents() == null ? Integer.MAX_VALUE : course.getMaxStudents();
+
+                if (enrolled >= max) {
+                    throw new BusinessException("该课程选课人数已满");
+                } else {
+                    throw new BusinessException("选课失败，请重试");
+                }
+            }
         }
 
-        course.setEnrolledStudents(enrolled + 1);
-
-        // 如果达到最大人数，更新状态为已满
-        if (course.getEnrolledStudents() >= course.getMaxStudents()) {
-            course.setStatus(2); // 已满
-        }
-
-        courseInfoMapper.updateById(course);
+        log.debug("课程选课人数+1成功: courseId={}", courseId);
     }
 
     /**
-     * 减少选课人数
+     * 减少选课人数（原子操作）
+     *
+     * 使用数据库层面的原子更新，避免并发问题
      */
     @Transactional(rollbackFor = Exception.class)
     public void decrementEnrollment(Long courseId) {
-        CourseInfo course = getCourseById(courseId);
-        int enrolled = course.getEnrolledStudents() == null ? 0 : course.getEnrolledStudents();
+        // 使用原子更新SQL
+        int affectedRows = courseInfoMapper.decrementEnrollmentAtomic(courseId);
 
-        if (enrolled > 0) {
-            course.setEnrolledStudents(enrolled - 1);
-
-            // 如果原来是已满状态，恢复为启用状态
-            if (course.getStatus() == 2) {
-                course.setStatus(1);
-            }
-
-            courseInfoMapper.updateById(course);
+        if (affectedRows > 0) {
+            log.debug("课程选课人数-1成功: courseId={}", courseId);
+        } else {
+            log.warn("课程选课人数-1失败，课程可能不存在: courseId={}", courseId);
         }
+    }
+
+    /**
+     * 按学期过滤课程ID列表
+     *
+     * @param courseIds 原始课程ID列表
+     * @param semester 学期名称（如 "2024-2025-2"）
+     * @return 过滤后的课程ID列表（只包含该学期的课程）
+     */
+    public List<Long> filterCourseIdsBySemester(List<Long> courseIds, String semester) {
+        if (courseIds == null || courseIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        if (semester == null || semester.isEmpty()) {
+            return courseIds;
+        }
+
+        LambdaQueryWrapper<CourseInfo> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(CourseInfo::getId, courseIds)
+               .eq(CourseInfo::getSemester, semester);
+
+        List<CourseInfo> courses = courseInfoMapper.selectList(wrapper);
+        return courses.stream()
+                .map(CourseInfo::getId)
+                .collect(Collectors.toList());
     }
 }

@@ -4,18 +4,18 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.student.common.exception.BusinessException;
-import com.student.common.result.Result;
-import com.student.student.client.FileServiceClient;
+import com.student.common.mq.dto.StudentRegistrationPayload;
+import com.student.common.mq.producer.MessageProducer;
 import com.student.student.entity.Student;
 import com.student.student.mapper.StudentMapper;
 import com.student.student.vo.StudentVO;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
 
-import java.util.Map;
-
+@Slf4j
 @Service
 public class StudentService {
 
@@ -23,86 +23,88 @@ public class StudentService {
     private StudentMapper studentMapper;
 
     @Autowired
-    private FileServiceClient fileServiceClient;
+    private MessageProducer messageProducer;
 
     public IPage<StudentVO> list(int page, int size, String name, Long classId) {
         Page<StudentVO> pageParam = new Page<>(page, size);
         return studentMapper.selectStudentVOPage(pageParam, name, classId);
     }
 
-    public void add(Student student) {
+    public void add(Student student, String password, String email) {
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Student::getStudentNo, student.getStudentNo());
         Student exist = studentMapper.selectOne(wrapper);
         if (exist != null) {
             throw new BusinessException("学号已存在");
         }
+
+        // 1. 插入学生记录
         studentMapper.insert(student);
+
+        // 2. 发送异步消息到RabbitMQ创建用户账号
+        StudentRegistrationPayload payload = StudentRegistrationPayload.builder()
+                .studentId(student.getId())
+                .studentNo(student.getStudentNo())
+                .studentName(student.getName())
+                .phone(student.getPhone())
+                .email(email) 
+                .classId(student.getClassId())
+                .password(password) 
+                .build();
+
+        messageProducer.sendMessage(
+                "user.registration.student",
+                "STUDENT_REGISTRATION",
+                payload,
+                5 // Normal priority
+        );
+
+        log.info("Student created and registration message sent: studentId={}, studentNo={}",
+                student.getId(), student.getStudentNo());
     }
 
+    @CacheEvict(value = {"student:detail", "student:vo"}, key = "#student.id")
     public void update(Student student) {
         studentMapper.updateById(student);
     }
 
+    @CacheEvict(value = {"student:detail", "student:vo"}, key = "#id")
     public void delete(Long id) {
         studentMapper.deleteById(id);
     }
 
+    @Cacheable(value = "student:detail", key = "#id", unless = "#result == null")
     public Student getById(Long id) {
         return studentMapper.selectById(id);
     }
 
+    @Cacheable(value = "student:vo", key = "#id", unless = "#result == null")
     public StudentVO getByIdWithClassName(Long id) {
         return studentMapper.selectStudentVOById(id);
     }
 
     /**
-     * 上传学生头像
+     * 更新学生头像
+     * 前端需先调用file-service上传文件获取fileId和fileUrl，再调用此方法更新
      */
-    public Map<String, Object> uploadAvatar(MultipartFile file, Long studentId, Long userId, String username) {
-        // 验证学生是否存在
+    @CacheEvict(value = {"student:detail", "student:vo"}, key = "#studentId")
+    public void updateAvatar(Long studentId, Long fileId, String fileUrl) {
         Student student = studentMapper.selectById(studentId);
         if (student == null) {
             throw new BusinessException("学生不存在");
         }
 
-        // 验证文件类型
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            throw new BusinessException("只能上传图片文件");
-        }
+        student.setAvatarFileId(fileId);
+        student.setAvatar(fileUrl);
+        studentMapper.updateById(student);
 
-        // 验证文件大小（限制5MB）
-        if (file.getSize() > 5 * 1024 * 1024) {
-            throw new BusinessException("头像文件大小不能超过5MB");
-        }
+        log.info("学生头像更新成功: studentId={}, fileId={}", studentId, fileId);
+    }
 
-        try {
-            // 调用文件服务上传文件
-            Result<Map<String, Object>> result = fileServiceClient.upload(
-                    file, "avatar", studentId, userId, username);
-
-            if (result.getCode() != 200) {
-                throw new BusinessException("文件上传失败：" + result.getMessage());
-            }
-
-            // 获取文件信息
-            Map<String, Object> data = result.getData();
-            Long fileId = Long.valueOf(data.get("id").toString());
-            String fileUrl = (String) data.get("fileUrl");
-
-            // 更新学生头像字段
-            student.setAvatarFileId(fileId);
-            student.setAvatar(fileUrl);
-            studentMapper.updateById(student);
-
-            // 返回文件信息
-            Map<String, Object> response = new java.util.HashMap<>();
-            response.put("avatarFileId", fileId);
-            response.put("avatarUrl", fileUrl);
-            return response;
-        } catch (Exception e) {
-            throw new BusinessException("头像上传失败：" + e.getMessage());
-        }
+    /**
+     * 获取所有学生的用户ID列表（用于通知系统）
+     */
+    public java.util.List<Long> getAllStudentUserIds() {
+        return studentMapper.selectAllStudentUserIds();
     }
 }

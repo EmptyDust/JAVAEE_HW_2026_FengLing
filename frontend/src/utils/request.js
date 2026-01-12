@@ -13,12 +13,21 @@ request.interceptors.request.use(
     const userStore = useUserStore()
     if (userStore.token) {
       config.headers.Authorization = `Bearer ${userStore.token}`
-      // 添加 userId 和 username 到 header
+      // 添加用户信息到 header
       if (userStore.userId) {
         config.headers.userId = userStore.userId
       }
       if (userStore.username) {
         config.headers.username = userStore.username
+      }
+      if (userStore.userType) {
+        config.headers.userType = userStore.userType
+      }
+      if (userStore.studentId) {
+        config.headers.studentId = userStore.studentId
+      }
+      if (userStore.teacherId) {
+        config.headers.teacherId = userStore.teacherId
       }
     }
     return config

@@ -3,6 +3,7 @@ package com.student.file.controller;
 import com.student.common.result.Result;
 import com.student.file.entity.FileInfo;
 import com.student.file.service.FileService;
+import com.student.file.util.FileValidationUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,7 +41,21 @@ public class FileController {
             @Parameter(hidden = true) @RequestHeader(value = "userId", required = false) Long userId,
             @Parameter(hidden = true) @RequestHeader(value = "username", required = false) String username) {
 
+        // 1. 文件安全校验（大小、类型、文件名）
+        FileValidationUtil.validateFile(file);
+
+        // 2. 记录上传日志
+        log.info("文件上传请求: filename={}, size={}, contentType={}, userId={}, businessType={}",
+                file.getOriginalFilename(),
+                FileValidationUtil.formatFileSize(file.getSize()),
+                file.getContentType(),
+                userId,
+                businessType);
+
+        // 3. 调用服务层上传文件
         FileInfo fileInfo = fileService.upload(file, businessType, businessId, userId, username);
+
+        log.info("文件上传成功: fileId={}, storageName={}", fileInfo.getId(), fileInfo.getStorageName());
         return Result.success(fileInfo);
     }
 

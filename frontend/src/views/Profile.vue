@@ -20,12 +20,8 @@
               <el-icon :size="50"><User /></el-icon>
             </el-avatar>
             <el-upload
-              :action="uploadUrl"
-              :headers="uploadHeaders"
-              :data="{ studentId: userInfo.id }"
+              :http-request="handleCustomUpload"
               :show-file-list="false"
-              :on-success="handleAvatarSuccess"
-              :on-error="handleAvatarError"
               :before-upload="beforeAvatarUpload"
               accept="image/*"
             >
@@ -50,6 +46,22 @@
           </el-form-item>
           <el-form-item label="班级">
             <el-input v-model="userInfo.className" disabled></el-input>
+          </el-form-item>
+        </template>
+
+        <!-- 教师特有字段 -->
+        <template v-if="userStore.userType === 'teacher'">
+          <el-form-item label="姓名">
+            <el-input v-model="userInfo.teacherName" disabled></el-input>
+          </el-form-item>
+          <el-form-item label="教师工号">
+            <el-input v-model="userInfo.teacherNo" disabled></el-input>
+          </el-form-item>
+          <el-form-item label="部门">
+            <el-input v-model="userInfo.department" disabled></el-input>
+          </el-form-item>
+          <el-form-item label="职称">
+            <el-input v-model="userInfo.title" disabled></el-input>
           </el-form-item>
         </template>
 
@@ -83,7 +95,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { User } from '@element-plus/icons-vue'
-import { getMyProfile, updateStudent, uploadAvatar } from '../api/student'
+import { getMyProfile as getStudentProfile, updateMyProfile as updateStudent, uploadAvatar } from '../api/student'
+import { getMyProfile as getTeacherProfile, updateMyProfile as updateTeacher } from '../api/teacher'
 import { getUserProfile, updateUserProfile } from '../api/auth'
 import { useUserStore } from '../store/user'
 
@@ -103,17 +116,17 @@ const userInfo = ref({
   classId: '',
   className: '',
   address: '',
-  avatarFileId: null
+  avatarFileId: null,
+  // 教师特有字段
+  teacherNo: '',
+  teacherName: '',
+  department: '',
+  title: ''
 })
 
 const originalInfo = ref({})
 
 // 头像相关
-const uploadUrl = '/api/student/upload-avatar'
-const uploadHeaders = computed(() => ({
-  'Authorization': `Bearer ${userStore.token}`
-}))
-
 const avatarUrl = computed(() => {
   if (userInfo.value.avatarFileId) {
     return `/api/file/stream/${userInfo.value.avatarFileId}`
@@ -121,18 +134,42 @@ const avatarUrl = computed(() => {
   return ''
 })
 
+// 自定义头像上传处理
+const handleCustomUpload = async (options) => {
+  try {
+    const response = await uploadAvatar(options.file, userInfo.value.id)
+    if (response.code === 200) {
+      ElMessage.success('头像上传成功')
+      // 重新加载个人信息以获取最新的头像
+      await loadProfile()
+    } else {
+      ElMessage.error(response.message || '头像上传失败')
+    }
+  } catch (error) {
+    console.error('头像上传失败:', error)
+    ElMessage.error('头像上传失败')
+  }
+}
+
 const loadProfile = async () => {
   loading.value = true
   try {
     if (userStore.userType === 'student') {
       // 学生加载自己的学生信息
-      const res = await getMyProfile()
+      const res = await getStudentProfile()
+      userInfo.value = {
+        ...res.data,
+        username: userStore.username
+      }
+    } else if (userStore.userType === 'teacher') {
+      // 教师加载自己的教师信息
+      const res = await getTeacherProfile()
       userInfo.value = {
         ...res.data,
         username: userStore.username
       }
     } else {
-      // 管理员和教师加载用户信息
+      // 管理员加载用户信息
       const res = await getUserProfile()
       userInfo.value = res.data
     }
@@ -163,8 +200,15 @@ const saveEdit = async () => {
         phone: userInfo.value.phone,
         address: userInfo.value.address
       })
+    } else if (userStore.userType === 'teacher') {
+      // 教师更新信息
+      await updateTeacher({
+        id: userInfo.value.id,
+        phone: userInfo.value.phone,
+        email: userInfo.value.email
+      })
     } else {
-      // 管理员和教师更新信息
+      // 管理员更新信息
       await updateUserProfile({
         email: userInfo.value.email,
         phone: userInfo.value.phone
@@ -194,23 +238,6 @@ const beforeAvatarUpload = (file) => {
     return false
   }
   return true
-}
-
-// 头像上传成功
-const handleAvatarSuccess = (response) => {
-  if (response.code === 200) {
-    ElMessage.success('头像上传成功')
-    // 更新头像文件ID
-    userInfo.value.avatarFileId = response.data.avatarFileId
-    originalInfo.value.avatarFileId = response.data.avatarFileId
-  } else {
-    ElMessage.error(response.message || '头像上传失败')
-  }
-}
-
-// 头像上传失败
-const handleAvatarError = () => {
-  ElMessage.error('头像上传失败')
 }
 
 onMounted(() => {

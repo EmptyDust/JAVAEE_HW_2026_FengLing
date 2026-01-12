@@ -2,7 +2,7 @@
   <el-container class="home-container">
     <el-header>
       <div class="header-content">
-        <h2>学生信息管理系统</h2>
+        <h2>教务管理系统</h2>
         <div class="user-info">
           <el-tag v-if="userStore.userType === 'admin'" type="danger">管理员</el-tag>
           <el-tag v-else-if="userStore.userType === 'teacher'" type="warning">教师</el-tag>

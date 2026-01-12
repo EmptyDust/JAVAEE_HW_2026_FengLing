@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import java.util.Map;
@@ -45,11 +44,51 @@ public class StudentController {
         return Result.success(student);
     }
 
-    @Operation(summary = "添加学生", description = "新增学生信息。仅管理员和教师可操作")
-    @RequireRole({"admin", "teacher"})
+    /**
+     * 学生更新自己的信息（学生自助）
+     */
+    @Operation(summary = "更新学生自己的信息", description = "学生只能修改自己的部分信息")
+    @RequireRole({"student"})
+    @PutMapping("/me")
+    public Result<?> updateMyInfo(
+            @RequestBody Student student,
+            @Parameter(hidden = true) @RequestHeader("studentId") Long studentId) {
+        if (studentId == null || !studentId.equals(student.getId())) {
+            return Result.error("只能修改自己的信息");
+        }
+
+        // 学生只能修改部分字段（不能修改学号等关键信息）
+        Student existing = studentService.getById(studentId);
+        if (existing == null) {
+            return Result.error("学生信息不存在");
+        }
+
+        // 只允许修改电话和地址
+        existing.setPhone(student.getPhone());
+        existing.setAddress(student.getAddress());
+        studentService.update(existing);
+
+        return Result.success("更新成功");
+    }
+
+    @Operation(summary = "添加学生", description = "新增学生信息")
     @PostMapping("/add")
-    public Result<?> add(@RequestBody Student student) {
-        studentService.add(student);
+    public Result<?> add(@RequestBody Map<String, Object> params) {
+        // 提取密码和邮箱（这些字段不在Student表中，而是在User表中）
+        String password = (String) params.get("password");
+        String email = (String) params.get("email");
+
+        // 创建Student对象
+        Student student = new Student();
+        student.setName((String) params.get("name"));
+        student.setStudentNo((String) params.get("studentNo"));
+        student.setGender((String) params.get("gender"));
+        student.setAge(params.get("age") != null ? ((Number) params.get("age")).intValue() : null);
+        student.setClassId(params.get("classId") != null ? ((Number) params.get("classId")).longValue() : null);
+        student.setPhone((String) params.get("phone"));
+
+        // 调用service，传递密码和邮箱
+        studentService.add(student, password, email);
         return Result.success("添加成功");
     }
 
@@ -107,24 +146,32 @@ public class StudentController {
         return Result.success(studentService.getById(id));
     }
 
-    @Operation(summary = "上传学生头像", description = "上传学生头像图片。管理员和教师可为任意学生上传，学生只能上传自己的头像")
-    @PostMapping("/upload-avatar")
-    public Result<Map<String, Object>> uploadAvatar(
-            @Parameter(description = "头像文件") @RequestParam("file") MultipartFile file,
+    @Operation(summary = "更新学生头像", description = "更新学生头像信息。前端需先调用file-service上传文件获取fileId和fileUrl")
+    @PostMapping("/update-avatar")
+    public Result<Void> updateAvatar(
             @Parameter(description = "学生ID") @RequestParam("studentId") Long studentId,
+            @Parameter(description = "文件ID") @RequestParam("fileId") Long fileId,
+            @Parameter(description = "文件URL") @RequestParam("fileUrl") String fileUrl,
             @Parameter(hidden = true) @RequestHeader("userType") String userType,
-            @Parameter(hidden = true) @RequestHeader(value = "studentId", required = false) Long currentStudentId,
-            @Parameter(hidden = true) @RequestHeader(value = "userId", required = false) Long userId,
-            @Parameter(hidden = true) @RequestHeader(value = "username", required = false) String username) {
+            @Parameter(hidden = true) @RequestHeader(value = "studentId", required = false) Long currentStudentId) {
 
-        // 学生只能上传自己的头像
+        // 学生只能更新自己的头像
         if ("student".equals(userType)) {
             if (currentStudentId == null || !currentStudentId.equals(studentId)) {
-                return Result.error("只能上传自己的头像");
+                return Result.error("只能更新自己的头像");
             }
         }
 
-        Map<String, Object> result = studentService.uploadAvatar(file, studentId, userId, username);
-        return Result.success(result);
+        studentService.updateAvatar(studentId, fileId, fileUrl);
+        return Result.success();
+    }
+
+    /**
+     * 获取所有学生的用户ID列表（用于通知系统）
+     */
+    @Operation(summary = "获取所有学生用户ID", description = "返回所有学生的用户ID列表，用于通知系统")
+    @GetMapping("/user-ids")
+    public Result<java.util.List<Long>> getAllStudentUserIds() {
+        return Result.success(studentService.getAllStudentUserIds());
     }
 }

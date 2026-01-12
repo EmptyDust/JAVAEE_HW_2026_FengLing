@@ -36,4 +36,11 @@ public interface StudentMapper extends BaseMapper<Student> {
             "LEFT JOIN class c ON s.class_id = c.id " +
             "WHERE s.id = #{id}")
     StudentVO selectStudentVOById(@Param("id") Long id);
+
+    /**
+     * 获取所有学生的用户ID列表
+     * 从user表查询所有学生类型用户的ID
+     */
+    @Select("SELECT id FROM user WHERE user_type = 'student'")
+    java.util.List<Long> selectAllStudentUserIds();
 }

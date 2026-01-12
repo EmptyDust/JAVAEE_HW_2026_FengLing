@@ -5,6 +5,7 @@ import com.student.common.exception.BusinessException;
 import com.student.file.entity.FileInfo;
 import com.student.file.mapper.FileInfoMapper;
 import com.student.file.strategy.FileStorageStrategy;
+import com.student.file.util.FileValidationUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,7 +44,7 @@ public class FileService {
     }
 
     /**
-     * 上传文件
+     * 上传文件（已添加安全清理）
      */
     public FileInfo upload(MultipartFile file, String businessType, Long businessId,
             Long userId, String username) {
@@ -52,22 +53,25 @@ public class FileService {
         }
 
         try {
-            // 生成存储文件名
+            // 1. 清理原始文件名（防止XSS和路径遍历攻击）
             String originalName = file.getOriginalFilename();
+            String sanitizedName = FileValidationUtil.sanitizeFileName(originalName);
+
+            // 2. 生成存储文件名（使用UUID确保唯一性）
             String extension = "";
-            if (originalName != null && originalName.contains(".")) {
-                extension = originalName.substring(originalName.lastIndexOf("."));
+            if (sanitizedName != null && sanitizedName.contains(".")) {
+                extension = sanitizedName.substring(sanitizedName.lastIndexOf("."));
             }
             String storageName = UUID.randomUUID().toString() + extension;
 
-            // 上传文件
+            // 3. 上传文件到存储系统
             FileStorageStrategy strategy = getStorageStrategy();
             String filePath = strategy.upload(file, storageName);
             String accessUrl = strategy.getAccessUrl(filePath);
 
-            // 保存文件信息到数据库
+            // 4. 保存文件信息到数据库（使用清理后的文件名）
             FileInfo fileInfo = new FileInfo();
-            fileInfo.setOriginalName(originalName);
+            fileInfo.setOriginalName(sanitizedName);  // 使用清理后的文件名
             fileInfo.setStorageName(storageName);
             fileInfo.setFilePath(filePath);
             fileInfo.setFileSize(file.getSize());
@@ -81,7 +85,7 @@ public class FileService {
 
             fileInfoMapper.insert(fileInfo);
 
-            log.info("文件上传成功: {} -> {}", originalName, filePath);
+            log.info("文件上传成功: {} -> {} (清理前: {})", sanitizedName, filePath, originalName);
             return fileInfo;
         } catch (Exception e) {
             log.error("文件上传失败", e);

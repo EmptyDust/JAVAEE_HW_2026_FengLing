@@ -24,6 +24,11 @@ public class User extends BaseEntity {
      */
     private Long studentId;
 
+    /**
+     * 教师ID (当用户类型为 teacher 时有值)
+     */
+    private Long teacherId;
+
     // ========== Password Security Fields ==========
     /**
      * 密码最后更新时间

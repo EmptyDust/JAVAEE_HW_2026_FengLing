@@ -1,8 +1,0 @@
-spring:
-  cloud:
-    nacos:
-      discovery:
-        server-addr: ${spring.cloud.nacos.config.server-addr}
-      config:
-        server-addr: localhost:8848
-        file-extension: yml

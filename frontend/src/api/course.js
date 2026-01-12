@@ -38,19 +38,23 @@ export const getCourseAttachments = (courseId) => {
   return request.get(`/course/attachment/list/${courseId}`)
 }
 
-// 上传课程附件
-export const uploadAttachment = (file, courseId, description) => {
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('courseId', courseId)
-  if (description) {
-    formData.append('description', description)
+// 上传课程附件（两步流程：先上传文件到file-service，再创建附件记录）
+export const uploadAttachment = async (file, courseId, description) => {
+  // 第一步：上传文件到file-service
+  const { uploadFile } = await import('./file')
+  const uploadResult = await uploadFile(file, 'course-attachment', courseId)
+
+  // 第二步：创建附件记录
+  const params = {
+    courseId,
+    fileId: uploadResult.data.id,
+    fileName: file.name,
+    filePath: uploadResult.data.filePath,
+    fileSize: file.size,
+    mimeType: file.type,
+    description: description || ''
   }
-  return request.post('/course/attachment/upload', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  })
+  return request.post('/course/attachment/create', null, { params })
 }
 
 // 删除课程附件

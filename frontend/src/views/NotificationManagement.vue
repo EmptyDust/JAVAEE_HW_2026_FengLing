@@ -178,8 +178,8 @@
         <el-form-item label="模板名称" prop="templateName">
           <el-input v-model="templateForm.templateName" placeholder="请输入模板名称"></el-input>
         </el-form-item>
-        <el-form-item label="通知类型" prop="notificationType">
-          <el-select v-model="templateForm.notificationType" placeholder="选择通知类型" style="width: 100%">
+        <el-form-item label="模板类型" prop="templateType">
+          <el-select v-model="templateForm.templateType" placeholder="选择模板类型" style="width: 100%">
             <el-option label="公告" value="announcement"></el-option>
             <el-option label="作业" value="homework"></el-option>
             <el-option label="考试" value="exam"></el-option>
@@ -358,7 +358,7 @@ const templateFormRef = ref(null)
 const templateForm = reactive({
   id: null,
   templateName: '',
-  notificationType: 'announcement',
+  templateType: 'announcement',
   titleTemplate: '',
   contentTemplate: '',
   variables: '',
@@ -369,7 +369,7 @@ const templateForm = reactive({
 // 模板表单验证规则
 const templateRules = {
   templateName: [{ required: true, message: '请输入模板名称', trigger: 'blur' }],
-  notificationType: [{ required: true, message: '请选择通知类型', trigger: 'change' }],
+  templateType: [{ required: true, message: '请选择模板类型', trigger: 'change' }],
   titleTemplate: [{ required: true, message: '请输入标题模板', trigger: 'blur' }],
   contentTemplate: [{ required: true, message: '请输入内容模板', trigger: 'blur' }]
 }
@@ -510,7 +510,7 @@ const handleEditTemplate = (row) => {
 const resetTemplateForm = () => {
   templateForm.id = null
   templateForm.templateName = ''
-  templateForm.notificationType = 'announcement'
+  templateForm.templateType = 'announcement'
   templateForm.titleTemplate = ''
   templateForm.contentTemplate = ''
   templateForm.variables = ''

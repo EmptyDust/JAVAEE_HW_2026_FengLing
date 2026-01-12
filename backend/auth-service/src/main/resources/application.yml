@@ -11,22 +11,27 @@ spring:
     username: root
     password: root123456
     druid:
-      initial-size: 5
-      min-idle: 5
-      max-active: 20
+      initial-size: 10        # 初始连接数（增加到10）
+      min-idle: 10            # 最小空闲连接数（增加到10）
+      max-active: 50          # 最大连接数（增加到50）
+      max-wait: 60000         # 最大等待时间（60秒）
+      time-between-eviction-runs-millis: 60000  # 检测空闲连接间隔
+      min-evictable-idle-time-millis: 300000    # 连接最小空闲时间
+      validation-query: SELECT 1                 # 验证查询
+      test-while-idle: true                      # 空闲时测试连接
+      test-on-borrow: false                      # 获取时不测试
+      test-on-return: false                      # 归还时不测试
   data:
     redis:
-      host: localhost
-      port: 6379
-      password: redis123456
-      database: 0
+      url: redis://default:redis123456@localhost:6379/0
       timeout: 3000ms
       lettuce:
         pool:
-          max-active: 8
-          max-wait: -1ms
-          max-idle: 8
-          min-idle: 0
+          max-active: 32      # 最大连接数（增加到32）
+          max-idle: 16        # 最大空闲连接数
+          min-idle: 8         # 最小空闲连接数
+          max-wait: 3000      # 最大等待时间（3秒）
+        shutdown-timeout: 100ms
   cloud:
     nacos:
       discovery:
@@ -34,13 +39,31 @@ spring:
       config:
         server-addr: localhost:8848
         file-extension: yml
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 5
+
+rabbitmq:
+  queue:
+    user-registration: user.registration.queue
+  exchange:
+    system: student.system.exchange
+  dlx:
+    name: student.system.dlx
 
 mybatis-plus:
   mapper-locations: classpath:/mapper/*.xml
   type-aliases-package: com.student.auth.entity
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 开发环境：输出SQL日志
 
 # Password Security Configuration
 password:

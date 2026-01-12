@@ -1,5 +1,7 @@
 package com.student.course.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -25,6 +27,9 @@ public class RabbitMQConfig {
     @Value("${rabbitmq.routing-key.notification}")
     private String notificationRoutingKey;
 
+    @Value("${rabbitmq.queue.teacher-name-sync:teacher.name.sync.queue}")
+    private String teacherNameSyncQueue;
+
     /**
      * 声明通知队列
      */
@@ -35,11 +40,30 @@ public class RabbitMQConfig {
     }
 
     /**
+     * 声明教师姓名同步队列
+     */
+    @Bean
+    public Queue teacherNameSyncQueue() {
+        return QueueBuilder.durable(teacherNameSyncQueue)
+                .build();
+    }
+
+    /**
      * 声明课程交换机（Direct类型）
      */
     @Bean
     public DirectExchange courseExchange() {
         return ExchangeBuilder.directExchange(courseExchange)
+                .durable(true)
+                .build();
+    }
+
+    /**
+     * 声明系统交换机（Topic类型）
+     */
+    @Bean
+    public TopicExchange systemExchange() {
+        return ExchangeBuilder.topicExchange("student.system.exchange")
                 .durable(true)
                 .build();
     }
@@ -56,11 +80,24 @@ public class RabbitMQConfig {
     }
 
     /**
+     * 绑定教师姓名同步队列到系统交换机
+     */
+    @Bean
+    public Binding teacherNameSyncBinding() {
+        return BindingBuilder
+                .bind(teacherNameSyncQueue())
+                .to(systemExchange())
+                .with("teacher.update.name");
+    }
+
+    /**
      * 消息转换器（使用JSON格式）
      */
     @Bean
     public MessageConverter messageConverter() {
-        return new Jackson2JsonMessageConverter();
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        return new Jackson2JsonMessageConverter(objectMapper);
     }
 
     /**

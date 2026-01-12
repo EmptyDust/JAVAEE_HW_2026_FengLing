@@ -160,7 +160,11 @@ public class NotificationService {
     }
 
     /**
-     * 标记通知为已读
+     * 标记通知为已读（优化版本）
+     *
+     * 性能优化：
+     * 1. 使用原子更新 SQL 更新 read_count
+     * 2. 减少数据库查询次数
      */
     @Transactional(rollbackFor = Exception.class)
     public void markAsRead(Long receiveId, Long userId) {
@@ -175,63 +179,68 @@ public class NotificationService {
         }
 
         if (receive.getIsRead() == 0) {
+            // 1. 更新接收记录为已读
             receive.setIsRead(1);
             receive.setReadTime(LocalDateTime.now());
             receiveMapper.updateById(receive);
 
-            // 更新通知的已读数量
-            CourseNotification notification = notificationMapper.selectById(receive.getNotificationId());
-            if (notification != null) {
-                notification.setReadCount(
-                    (notification.getReadCount() == null ? 0 : notification.getReadCount()) + 1
-                );
-                notificationMapper.updateById(notification);
-            }
+            // 2. 原子性增加通知的已读数量（避免"先查后改"）
+            notificationMapper.incrementReadCount(receive.getNotificationId());
 
-            log.info("通知已标记为已读: receiveId={}, userId={}", receiveId, userId);
+            log.info("通知已标记为已读: receiveId={}, userId={}, notificationId={}",
+                    receiveId, userId, receive.getNotificationId());
         }
     }
 
     /**
-     * 批量标记为已读
+     * 批量标记为已读（优化版本，避免 N+1 查询）
+     *
+     * 性能优化：
+     * 1. 使用 UpdateWrapper 批量更新 notification_receive 表（1次SQL）
+     * 2. 使用子查询批量更新 course_notification 的 read_count（1次SQL）
+     * 3. 避免循环中的数据库操作
+     *
+     * 优化前：100条未读通知需要 201次数据库操作
+     * 优化后：100条未读通知只需要 3次数据库操作
      */
     @Transactional(rollbackFor = Exception.class)
     public void markAllAsRead(Long userId) {
-        LambdaQueryWrapper<NotificationReceive> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(NotificationReceive::getUserId, userId)
-               .eq(NotificationReceive::getIsRead, 0)
-               .eq(NotificationReceive::getStatus, 1);
+        // 1. 先统计未读数量（用于日志）
+        LambdaQueryWrapper<NotificationReceive> countWrapper = new LambdaQueryWrapper<>();
+        countWrapper.eq(NotificationReceive::getUserId, userId)
+                    .eq(NotificationReceive::getIsRead, 0)
+                    .eq(NotificationReceive::getStatus, 1);
+        Long unreadCount = receiveMapper.selectCount(countWrapper);
 
-        List<NotificationReceive> unreadList = receiveMapper.selectList(wrapper);
-
-        for (NotificationReceive receive : unreadList) {
-            receive.setIsRead(1);
-            receive.setReadTime(LocalDateTime.now());
-            receiveMapper.updateById(receive);
-
-            // 更新通知的已读数量
-            CourseNotification notification = notificationMapper.selectById(receive.getNotificationId());
-            if (notification != null) {
-                notification.setReadCount(
-                    (notification.getReadCount() == null ? 0 : notification.getReadCount()) + 1
-                );
-                notificationMapper.updateById(notification);
-            }
+        if (unreadCount == 0) {
+            log.info("用户没有未读通知: userId={}", userId);
+            return;
         }
 
-        log.info("批量标记已读成功: userId={}, count={}", userId, unreadList.size());
+        // 2. 批量更新 notification_receive 表（单条SQL，避免循环更新）
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<NotificationReceive> updateWrapper =
+                new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        updateWrapper.eq("user_id", userId)
+                     .eq("is_read", 0)
+                     .eq("status", 1)
+                     .set("is_read", 1)
+                     .set("read_time", LocalDateTime.now());
+
+        int updatedRows = receiveMapper.update(null, updateWrapper);
+
+        // 3. 批量更新 course_notification 的 read_count（单条SQL，使用子查询统计）
+        int updatedNotifications = notificationMapper.batchIncrementReadCountByUserId(userId);
+
+        log.info("批量标记已读成功: userId={}, unreadCount={}, updatedRows={}, updatedNotifications={}",
+                userId, unreadCount, updatedRows, updatedNotifications);
     }
 
     /**
      * 获取未读通知数量
      */
     public Long getUnreadCount(Long userId) {
-        LambdaQueryWrapper<NotificationReceive> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(NotificationReceive::getUserId, userId)
-               .eq(NotificationReceive::getIsRead, 0)
-               .eq(NotificationReceive::getStatus, 1);
-
-        return receiveMapper.selectCount(wrapper);
+        // 使用自定义方法查询，避免数据权限拦截器冲突
+        return receiveMapper.countUnreadByUserId(userId);
     }
 
     /**

@@ -27,6 +27,12 @@ public class ClassController {
         return Result.success(classService.list(page, size));
     }
 
+    @Operation(summary = "查询所有班级", description = "获取所有班级列表（不分页），用于下拉选择")
+    @GetMapping("/all")
+    public Result<java.util.List<Class>> listAll() {
+        return Result.success(classService.listAll());
+    }
+
     @Operation(summary = "添加班级", description = "新增班级信息")
     @PostMapping("/add")
     public Result<?> add(

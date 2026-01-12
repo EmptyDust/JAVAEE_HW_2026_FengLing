@@ -10,6 +10,7 @@ import com.student.course.mapper.CourseEnrollmentMapper;
 import com.student.course.vo.MyEnrollmentVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,15 +30,19 @@ public class CourseEnrollmentService {
     private CourseInfoService courseInfoService;
 
     /**
-     * 学生选课
+     * 学生选课（并发安全版本）
+     *
+     * 并发控制策略：
+     * 1. 利用数据库唯一索引 uk_course_student_status(course_id, student_id, status) 防止重复选课
+     * 2. 使用原子更新 SQL 防止选课人数超卖
+     * 3. 捕获 DuplicateKeyException 转换为友好的业务提示
      */
     @Transactional(rollbackFor = Exception.class)
     public CourseEnrollment enrollCourse(Long courseId, Long studentId, String studentName,
             String studentNumber, Long classId, String className) {
-        // 检查课程是否存在
+        // 1. 检查课程是否存在和基本状态（快速失败）
         CourseInfo course = courseInfoService.getCourseById(courseId);
 
-        // 检查课程状态
         if (course.getStatus() == 0) {
             throw new BusinessException("该课程已停用，不能选课");
         }
@@ -45,17 +50,7 @@ public class CourseEnrollmentService {
             throw new BusinessException("该课程选课人数已满");
         }
 
-        // 检查是否已选过该课程
-        LambdaQueryWrapper<CourseEnrollment> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CourseEnrollment::getCourseId, courseId)
-                .eq(CourseEnrollment::getStudentId, studentId)
-                .eq(CourseEnrollment::getStatus, 1); // 已选课状态
-
-        if (enrollmentMapper.selectCount(wrapper) > 0) {
-            throw new BusinessException("您已选过该课程");
-        }
-
-        // 创建选课记录
+        // 2. 创建选课记录（不再预先检查是否已选，依赖数据库唯一索引）
         CourseEnrollment enrollment = new CourseEnrollment();
         enrollment.setCourseId(courseId);
         enrollment.setStudentId(studentId);
@@ -66,15 +61,24 @@ public class CourseEnrollmentService {
         enrollment.setEnrollmentTime(LocalDateTime.now());
         enrollment.setStatus(1); // 已选课
 
-        enrollmentMapper.insert(enrollment);
+        try {
+            // 3. 插入选课记录（可能触发唯一索引冲突）
+            enrollmentMapper.insert(enrollment);
 
-        // 增加课程选课人数
-        courseInfoService.incrementEnrollment(courseId);
+            // 4. 原子性增加课程选课人数（可能因人数已满而失败）
+            courseInfoService.incrementEnrollment(courseId);
 
-        log.info("学生选课成功: studentId={}, courseId={}, courseName={}",
-                studentId, courseId, course.getCourseName());
+            log.info("学生选课成功: studentId={}, courseId={}, courseName={}",
+                    studentId, courseId, course.getCourseName());
 
-        return enrollment;
+            return enrollment;
+
+        } catch (DuplicateKeyException e) {
+            // 捕获唯一索引冲突异常，说明已经选过该课程
+            log.warn("学生重复选课被拦截: studentId={}, courseId={}, error={}",
+                    studentId, courseId, e.getMessage());
+            throw new BusinessException("您已选过该课程");
+        }
     }
 
     /**
@@ -132,12 +136,9 @@ public class CourseEnrollmentService {
      * 检查学生是否已选某课程
      */
     public boolean isEnrolled(Long courseId, Long studentId) {
-        LambdaQueryWrapper<CourseEnrollment> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CourseEnrollment::getCourseId, courseId)
-                .eq(CourseEnrollment::getStudentId, studentId)
-                .eq(CourseEnrollment::getStatus, 1);
-
-        return enrollmentMapper.selectCount(wrapper) > 0;
+        // 使用自定义方法查询，避免数据权限拦截器冲突
+        Long count = enrollmentMapper.countByStudentAndCourse(studentId, courseId);
+        return count != null && count > 0;
     }
 
     /**

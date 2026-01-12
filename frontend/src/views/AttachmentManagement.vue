@@ -97,11 +97,7 @@
         </div>
         <div class="toolbar-right">
           <el-upload
-            :action="uploadUrl"
-            :headers="uploadHeaders"
-            :data="uploadData"
-            :on-success="handleUploadSuccess"
-            :on-error="handleUploadError"
+            :http-request="handleCustomUpload"
             :show-file-list="false"
             :disabled="!uploadData.courseId"
           >
@@ -181,6 +177,7 @@
         <!-- 视频播放器 -->
         <video
           v-if="previewType === 'video'"
+          ref="videoPlayer"
           :src="previewUrl"
           controls
           style="width: 100%; max-height: 500px"
@@ -189,6 +186,7 @@
         <!-- 音频播放器 -->
         <audio
           v-if="previewType === 'audio'"
+          ref="audioPlayer"
           :src="previewUrl"
           controls
           style="width: 100%"
@@ -230,7 +228,7 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useUserStore } from '../store/user'
-import { getCourseList, getCourseAttachments, deleteAttachment, recordDownload, recordView, advancedSearchAttachments, getAllAttachmentsWithStatistics } from '../api/course'
+import { getCourseList, getCourseAttachments, deleteAttachment, recordDownload, recordView, advancedSearchAttachments, getAllAttachmentsWithStatistics, uploadAttachment } from '../api/course'
 
 const userStore = useUserStore()
 
@@ -259,10 +257,6 @@ const statistics = ref({
 })
 
 // 上传配置
-const uploadUrl = '/api/course/attachment/upload'
-const uploadHeaders = computed(() => ({
-  'Authorization': `Bearer ${userStore.token}`
-}))
 const uploadData = reactive({
   courseId: null
 })
@@ -274,6 +268,8 @@ const previewUrl = ref('')
 const previewTitle = ref('')
 const isOfficeDocument = ref(false)
 const officeViewerUrl = ref('')
+const videoPlayer = ref(null)
+const audioPlayer = ref(null)
 
 // 获取课程列表
 const fetchCourses = async () => {
@@ -381,6 +377,21 @@ const handleUploadError = () => {
   ElMessage.error('上传失败')
 }
 
+// 自定义上传
+const handleCustomUpload = async (options) => {
+  try {
+    if (!uploadData.courseId) {
+      ElMessage.error('请先选择课程')
+      return
+    }
+    await uploadAttachment(options.file, uploadData.courseId)
+    ElMessage.success('上传成功')
+    fetchData()
+  } catch (error) {
+    ElMessage.error('上传失败')
+  }
+}
+
 // 下载附件
 const handleDownload = async (row) => {
   try {
@@ -465,6 +476,21 @@ const getCourseNameById = (courseId) => {
 // 监听课程选择变化，自动同步到上传数据
 watch(() => searchForm.courseId, (newValue) => {
   uploadData.courseId = newValue
+})
+
+// 监听预览对话框关闭，停止媒体播放
+watch(previewDialogVisible, (newValue) => {
+  if (!newValue) {
+    // 对话框关闭时，停止视频和音频播放
+    if (videoPlayer.value) {
+      videoPlayer.value.pause()
+      videoPlayer.value.currentTime = 0
+    }
+    if (audioPlayer.value) {
+      audioPlayer.value.pause()
+      audioPlayer.value.currentTime = 0
+    }
+  }
 })
 
 onMounted(() => {
